@@ -1,0 +1,108 @@
+#include <HCSR04.h>
+#include <SoftwareSerial.h>
+#include <String.h>
+
+SoftwareSerial gprsSerial(7,8);
+
+UltraSonicDistanceSensor distanceSensor(13, 12);  // Initialize sensor that uses digital pins 13 and 12.
+int promedio = 0;
+void setup () {
+    gprsSerial.begin(19200);          
+    Serial.begin(19200);     
+}
+void loop () {
+   float nivel = distanceSensor.measureDistanceCm();
+    if(nivel<=6){
+    nivel=6;
+   }
+   if(nivel>=34){
+    nivel=34;
+   }
+   float nivel1=map(nivel,6,34,100,0);
+   
+   Serial.println("El Nivel de agua del acueducto es de: "); 
+   Serial.println(nivel1);
+   Serial.println("\t\t");
+   delay(1000); 
+
+   
+  if (gprsSerial.available())
+    Serial.write(gprsSerial.read());
+ 
+  gprsSerial.println("AT");
+  delay(1000);
+ 
+  gprsSerial.println("AT+CPIN?");
+  delay(1000);
+ 
+  gprsSerial.println("AT+CREG?");
+  delay(1000);
+ 
+  gprsSerial.println("AT+CGATT?");
+  delay(1000);
+ 
+  gprsSerial.println("AT+CIPSHUT");
+  delay(1000);
+ 
+  gprsSerial.println("AT+CIPSTATUS");
+  delay(2000);
+ 
+  gprsSerial.println("AT+CIPMUX=0");
+  delay(2000);
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CSTT=\"altice\"");//Iniciar APN
+  delay(1000);
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CIICR");//abrir conexión inalambrica
+  delay(3000);
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CIFSR");//Obtener dirección IP
+  delay(2000);
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CIPSPRT=0");
+  delay(3000);
+ 
+  ShowSerialData();
+  
+  gprsSerial.println("AT+CIPSTART=\"TCP\",\"api.thingspeak.com\",\"80\"");//Iniciar conexión
+  delay(6000);
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CIPSEND");//Enviar datos al servidor
+  delay(4000);
+  ShowSerialData();
+
+  String str="GET https://api.thingspeak.com/update?api_key=O2LLXJDLR62K9TF8&field1=" + String(nivel1);
+  Serial.println(str);
+  gprsSerial.println(str);
+  
+  delay(4000);
+  ShowSerialData();
+ 
+  gprsSerial.println((char)26);//Enviando
+  delay(5000);//esperando respuesta, el tiempo se basa en la condición de internet
+  gprsSerial.println();
+ 
+  ShowSerialData();
+ 
+  gprsSerial.println("AT+CIPSHUT");//Cerrar conexión
+  delay(100);
+  ShowSerialData();
+}
+
+void ShowSerialData()
+{
+  while(gprsSerial.available()!=0)
+  Serial.write(gprsSerial.read());
+  delay(5000); 
+  
+}
